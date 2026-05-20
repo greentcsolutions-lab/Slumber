@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Slumber — Fix Your Sleep, Fix Your Days</title>
+  <meta name="description" content="Track your sleep patterns and build a personalized wind-down routine. Wake up actually rested." />
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            night:   { 50:'#f0f0ff', 100:'#e0e0ff', 200:'#c4c4f5', 300:'#9999e8', 400:'#6666d6', 500:'#4444c0', 600:'#3333a0', 700:'#222280', 800:'#141460', 900:'#0a0a3f', 950:'#05051f' },
+            moon:    { 100:'#fff8e7', 200:'#ffedb5', 300:'#ffd97a', 400:'#ffcc44', 500:'#ffb800', 600:'#cc9200', 700:'#996d00' },
+            aurora:  { 400:'#7ee8c8', 500:'#4cd9af', 600:'#1fc492' },
+          },
+          fontFamily: {
+            display: ['"Playfair Display"', 'Georgia', 'serif'],
+            body:    ['"DM Sans"', 'sans-serif'],
+            mono:    ['"JetBrains Mono"', 'monospace'],
+          },
+          animation: {
+            'float':       'float 6s ease-in-out infinite',
+            'pulse-slow':  'pulse 4s ease-in-out infinite',
+            'shimmer':     'shimmer 2s linear infinite',
+            'fade-up':     'fadeUp 0.5s ease forwards',
+            'star-twinkle':'twinkle 3s ease-in-out infinite',
+          },
+          keyframes: {
+            float:    { '0%,100%':{ transform:'translateY(0)' }, '50%':{ transform:'translateY(-10px)' } },
+            shimmer:  { '0%':{ backgroundPosition:'-200% 0' }, '100%':{ backgroundPosition:'200% 0' } },
+            fadeUp:   { '0%':{ opacity:0, transform:'translateY(16px)' }, '100%':{ opacity:1, transform:'translateY(0)' } },
+            twinkle:  { '0%,100%':{ opacity:0.3 }, '50%':{ opacity:1 } },
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body class="bg-night-950 text-gray-100 font-body min-h-screen overflow-x-hidden">
+
+  <!-- Stars background -->
+  <div class="stars-bg fixed inset-0 pointer-events-none z-0" id="starsContainer"></div>
+
+  <!-- Soft nebula glow -->
+  <div class="fixed inset-0 pointer-events-none z-0">
+    <div class="absolute top-0 left-1/4 w-96 h-96 rounded-full opacity-10" style="background:radial-gradient(circle,#6666d6,transparent 70%);filter:blur(60px)"></div>
+    <div class="absolute bottom-1/4 right-1/4 w-80 h-80 rounded-full opacity-8" style="background:radial-gradient(circle,#ffb800,transparent 70%);filter:blur(80px)"></div>
+    <div class="absolute top-1/2 left-0 w-64 h-64 rounded-full opacity-6" style="background:radial-gradient(circle,#4cd9af,transparent 70%);filter:blur(70px)"></div>
+  </div>
+
+  <!-- Theme Toggle -->
+  <button id="themeToggle" class="fixed top-4 right-4 z-50 w-10 h-10 rounded-full flex items-center justify-center bg-night-800/80 backdrop-blur border border-night-600/50 hover:border-moon-400/50 transition-all duration-300 text-lg" aria-label="Toggle theme">
+    🌙
+  </button>
+
+  <!-- Main container -->
+  <div class="relative z-10 max-w-2xl mx-auto px-4 pb-20">
+
+    <!-- Header -->
+    <header class="text-center pt-12 pb-8 animate-fade-up">
+      <div class="moon-icon text-6xl mb-3 inline-block animate-float">🌙</div>
+      <h1 class="font-display text-4xl md:text-5xl font-black text-white mb-2 tracking-tight">Slumber</h1>
+      <p class="text-moon-300/80 text-sm font-mono tracking-widest uppercase mb-1">Sleep Journal & Wind-Down Lab</p>
+      <p class="text-gray-400 text-base mt-3 max-w-sm mx-auto leading-relaxed">Fix your sleep. Fix your days. One night at a time.</p>
+    </header>
+
+    <!-- Nav Tabs -->
+    <nav class="flex gap-1 bg-night-900/60 backdrop-blur rounded-2xl p-1.5 mb-8 border border-night-700/50" role="tablist">
+      <button class="tab-btn active flex-1 py-2.5 rounded-xl text-sm font-medium transition-all duration-200" data-tab="log" role="tab">
+        🌛 Log Night
+      </button>
+      <button class="tab-btn flex-1 py-2.5 rounded-xl text-sm font-medium transition-all duration-200" data-tab="chart" role="tab">
+        📊 My Patterns
+      </button>
+      <button class="tab-btn flex-1 py-2.5 rounded-xl text-sm font-medium transition-all duration-200" data-tab="routine" role="tab">
+        ✨ Wind-Down
+      </button>
+    </nav>
+
+    <!-- ═══════════════ TAB: LOG ═══════════════ -->
+    <section id="tab-log" class="tab-section animate-fade-up">
+      <div class="card mb-4">
+        <div class="flex items-center justify-between mb-5">
+          <h2 class="font-display text-xl font-bold text-white">How did last night go?</h2>
+          <span class="text-xs text-gray-500 font-mono" id="logDate">Today</span>
+        </div>
+
+        <!-- Bedtime / Wake time -->
+        <div class="grid grid-cols-2 gap-3 mb-5">
+          <div class="time-input-group">
+            <label class="block text-xs text-gray-400 mb-1.5 font-medium tracking-wide uppercase">🛏 Bedtime</label>
+            <input type="time" id="bedtime" class="time-input w-full" value="23:00" />
+          </div>
+          <div class="time-input-group">
+            <label class="block text-xs text-gray-400 mb-1.5 font-medium tracking-wide uppercase">⏰ Woke up</label>
+            <input type="time" id="waketime" class="time-input w-full" value="07:00" />
+          </div>
+        </div>
+
+        <!-- Duration display -->
+        <div class="duration-badge mb-5 flex items-center justify-center gap-2 py-3 rounded-xl bg-night-800/50 border border-night-600/30">
+          <span class="text-2xl font-display font-bold" id="durationDisplay">8h 00m</span>
+          <span class="text-xs text-gray-500">total sleep</span>
+          <span id="durationEmoji" class="text-lg">😴</span>
+        </div>
+
+        <!-- Quality Rating -->
+        <div class="mb-5">
+          <label class="block text-xs text-gray-400 mb-3 font-medium tracking-wide uppercase">Sleep Quality</label>
+          <div class="flex gap-2 justify-between" id="qualityRating">
+            <button class="quality-btn flex-1 py-3 rounded-xl text-xl transition-all duration-200 hover:scale-105" data-val="1" title="Terrible">😫</button>
+            <button class="quality-btn flex-1 py-3 rounded-xl text-xl transition-all duration-200 hover:scale-105" data-val="2" title="Poor">😞</button>
+            <button class="quality-btn flex-1 py-3 rounded-xl text-xl transition-all duration-200 hover:scale-105" data-val="3" title="Okay">😐</button>
+            <button class="quality-btn flex-1 py-3 rounded-xl text-xl transition-all duration-200 hover:scale-105" data-val="4" title="Good">😊</button>
+            <button class="quality-btn flex-1 py-3 rounded-xl text-xl transition-all duration-200 hover:scale-105" data-val="5" title="Amazing">🤩</button>
+          </div>
+        </div>
+
+        <!-- Mood -->
+        <div class="mb-5">
+          <label class="block text-xs text-gray-400 mb-3 font-medium tracking-wide uppercase">Morning Mood</label>
+          <div class="flex gap-2 justify-between" id="moodRating">
+            <button class="mood-btn flex-1 py-2.5 rounded-xl text-xs font-medium transition-all duration-200 border border-transparent" data-val="1">💀 Dead</button>
+            <button class="mood-btn flex-1 py-2.5 rounded-xl text-xs font-medium transition-all duration-200 border border-transparent" data-val="2">😓 Rough</button>
+            <button class="mood-btn flex-1 py-2.5 rounded-xl text-xs font-medium transition-all duration-200 border border-transparent" data-val="3">🙄 Meh</button>
+            <button class="mood-btn flex-1 py-2.5 rounded-xl text-xs font-medium transition-all duration-200 border border-transparent" data-val="4">😄 Good</button>
+            <button class="mood-btn flex-1 py-2.5 rounded-xl text-xs font-medium transition-all duration-200 border border-transparent" data-val="5">🚀 Great</button>
+          </div>
+        </div>
+
+        <!-- Notes -->
+        <div class="mb-5">
+          <label class="block text-xs text-gray-400 mb-1.5 font-medium tracking-wide uppercase">Quick Note <span class="normal-case text-gray-600">(optional)</span></label>
+          <textarea id="sleepNote" rows="2" placeholder="Woke up twice, had coffee too late, vivid dreams…" class="note-input w-full resize-none rounded-xl px-3.5 py-3 text-sm"></textarea>
+        </div>
+
+        <!-- Did you use wind-down? -->
+        <div class="flex items-center gap-3 mb-5 p-3 rounded-xl bg-night-800/30 border border-night-600/20">
+          <input type="checkbox" id="usedWindDown" class="w-4 h-4 accent-moon-400 rounded" />
+          <label for="usedWindDown" class="text-sm text-gray-300 cursor-pointer">Used my wind-down routine last night ✨</label>
+        </div>
+
+        <!-- Save -->
+        <button id="saveLog" class="save-btn w-full py-3.5 rounded-xl font-semibold text-base transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]">
+          Save Tonight's Log 🌙
+        </button>
+
+        <!-- Success message -->
+        <div id="saveSuccess" class="hidden mt-3 text-center py-3 rounded-xl bg-aurora-600/20 border border-aurora-500/30 text-aurora-400 text-sm font-medium animate-fade-up">
+          ✅ Logged! Sweet dreams, patterns incoming.
+        </div>
+      </div>
+
+      <!-- Streak card -->
+      <div class="card">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-xs text-gray-400 uppercase tracking-wide font-medium mb-1">Logging Streak</p>
+            <p class="font-display text-3xl font-bold text-white" id="streakCount">0</p>
+            <p class="text-xs text-gray-500 mt-0.5">nights logged</p>
+          </div>
+          <div class="text-5xl" id="streakEmoji">🌑</div>
+        </div>
+        <div class="mt-3">
+          <div class="streak-bar-bg rounded-full h-1.5 overflow-hidden">
+            <div class="streak-bar-fill h-full rounded-full transition-all duration-700" id="streakBar" style="width:0%"></div>
+          </div>
+          <p class="text-xs text-gray-600 mt-1.5 text-right" id="streakGoal">Goal: 7 nights</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════════ TAB: CHART ═══════════════ -->
+    <section id="tab-chart" class="tab-section hidden animate-fade-up">
+
+      <!-- Summary row -->
+      <div class="grid grid-cols-3 gap-3 mb-4" id="summaryCards">
+        <div class="card text-center py-4">
+          <p class="text-2xl font-display font-bold text-moon-300" id="avgSleep">—</p>
+          <p class="text-xs text-gray-500 mt-1">Avg Sleep</p>
+        </div>
+        <div class="card text-center py-4">
+          <p class="text-2xl font-display font-bold text-aurora-400" id="avgQuality">—</p>
+          <p class="text-xs text-gray-500 mt-1">Avg Quality</p>
+        </div>
+        <div class="card text-center py-4">
+          <p class="text-2xl font-display font-bold text-night-300" id="avgMood">—</p>
+          <p class="text-xs text-gray-500 mt-1">Avg Mood</p>
+        </div>
+      </div>
+
+      <!-- Sleep chart -->
+      <div class="card mb-4">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="font-display text-lg font-bold text-white">Sleep Duration</h2>
+          <span class="text-xs text-gray-500 font-mono">last 14 nights</span>
+        </div>
+        <div id="sleepChart" class="sleep-chart flex items-end gap-1.5 h-32 mb-2">
+          <!-- bars injected by JS -->
+        </div>
+        <div class="flex justify-between text-xs text-gray-600" id="chartLabels"></div>
+        <!-- Ideal line indicator -->
+        <div class="flex items-center gap-2 mt-3">
+          <div class="w-4 h-0.5 bg-moon-400/50 dashed-line"></div>
+          <span class="text-xs text-gray-500">8h target</span>
+        </div>
+      </div>
+
+      <!-- Bedtime consistency -->
+      <div class="card mb-4">
+        <h2 class="font-display text-lg font-bold text-white mb-4">Bedtime Drift</h2>
+        <div id="bedtimeDots" class="flex items-center gap-2 flex-wrap">
+          <!-- dots injected by JS -->
+        </div>
+        <p class="text-xs text-gray-500 mt-3" id="bedtimeInsight">Log more nights to see your pattern.</p>
+      </div>
+
+      <!-- Insight card -->
+      <div class="card insight-card">
+        <h2 class="font-display text-lg font-bold text-white mb-3">💡 Your Insight</h2>
+        <p class="text-gray-300 text-sm leading-relaxed" id="insightText">Log at least 3 nights to unlock your personalized sleep insight.</p>
+      </div>
+
+      <!-- Empty state -->
+      <div id="chartEmpty" class="text-center py-12 hidden">
+        <div class="text-5xl mb-4 animate-float">🌑</div>
+        <p class="font-display text-xl text-gray-400 mb-2">No data yet</p>
+        <p class="text-gray-600 text-sm">Log your first night to start seeing patterns.</p>
+      </div>
+    </section>
+
+    <!-- ═══════════════ TAB: ROUTINE ═══════════════ -->
+    <section id="tab-routine" class="tab-section hidden animate-fade-up">
+
+      <div class="card mb-4">
+        <h2 class="font-display text-xl font-bold text-white mb-2">Your Wind-Down Routine</h2>
+        <p class="text-gray-400 text-sm mb-5 leading-relaxed">A personalized pre-sleep ritual that tells your brain: it's time to rest. Consistency is the magic.</p>
+
+        <!-- Target bedtime -->
+        <div class="mb-5">
+          <label class="block text-xs text-gray-400 mb-1.5 font-medium tracking-wide uppercase">🎯 Target Bedtime</label>
+          <input type="time" id="targetBedtime" class="time-input w-full max-w-xs" value="23:00" />
+          <p class="text-xs text-gray-600 mt-1.5">Routine starts <span id="routineStartTime" class="text-moon-400">60 min before</span></p>
+        </div>
+
+        <!-- Duration select -->
+        <div class="mb-5">
+          <label class="block text-xs text-gray-400 mb-2 font-medium tracking-wide uppercase">Routine Length</label>
+          <div class="flex gap-2">
+            <button class="duration-select flex-1 py-2 rounded-xl text-sm font-medium border transition-all duration-200" data-min="30">30 min</button>
+            <button class="duration-select flex-1 py-2 rounded-xl text-sm font-medium border transition-all duration-200 active-duration" data-min="60">60 min</button>
+            <button class="duration-select flex-1 py-2 rounded-xl text-sm font-medium border transition-all duration-200" data-min="90">90 min</button>
+          </div>
+        </div>
+
+        <!-- Preferences -->
+        <div class="mb-5">
+          <label class="block text-xs text-gray-400 mb-3 font-medium tracking-wide uppercase">Personalize It</label>
+          <div class="grid grid-cols-2 gap-2" id="prefCheckboxes">
+            <label class="pref-label"><input type="checkbox" class="pref-check" value="screens" /> 📵 Screen cutoff</label>
+            <label class="pref-label"><input type="checkbox" class="pref-check" value="stretch" checked /> 🧘 Light stretching</label>
+            <label class="pref-label"><input type="checkbox" class="pref-check" value="journal" /> 📓 Brain dump journal</label>
+            <label class="pref-label"><input type="checkbox" class="pref-check" value="tea" checked /> 🍵 Herbal tea</label>
+            <label class="pref-label"><input type="checkbox" class="pref-check" value="reading" checked /> 📖 Reading</label>
+            <label class="pref-label"><input type="checkbox" class="pref-check" value="breathing" /> 🌬 Breathing exercise</label>
+            <label class="pref-label"><input type="checkbox" class="pref-check" value="bath" /> 🛁 Warm shower/bath</label>
+            <label class="pref-label"><input type="checkbox" class="pref-check" value="gratitude" /> 🙏 Gratitude list</label>
+          </div>
+        </div>
+
+        <button id="generateRoutine" class="save-btn w-full py-3.5 rounded-xl font-semibold text-base transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]">
+          ✨ Generate My Routine
+        </button>
+      </div>
+
+      <!-- Generated routine output -->
+      <div id="routineOutput" class="hidden card animate-fade-up">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="font-display text-lg font-bold text-white">Tonight's Ritual</h3>
+          <button id="copyRoutine" class="text-xs text-gray-400 hover:text-moon-300 transition-colors flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-night-600/50 hover:border-moon-400/30">
+            📋 Copy
+          </button>
+        </div>
+        <div id="routineSteps" class="space-y-3">
+          <!-- steps injected by JS -->
+        </div>
+        <div class="mt-5 pt-4 border-t border-night-700/50">
+          <p class="text-xs text-gray-500 text-center italic" id="routineFooter"></p>
+        </div>
+      </div>
+
+      <!-- Tonight's checklist (if routine saved) -->
+      <div id="tonightChecklist" class="hidden card mt-4 animate-fade-up">
+        <h3 class="font-display text-lg font-bold text-white mb-4">✅ Tonight's Checklist</h3>
+        <div id="checklistItems" class="space-y-2.5"></div>
+        <div class="mt-4 pt-3 border-t border-night-700/50">
+          <div class="flex items-center justify-between">
+            <span class="text-xs text-gray-500"><span id="checkedCount">0</span> / <span id="totalCount">0</span> done</span>
+            <div class="checklist-progress-bg rounded-full h-1.5 w-32 overflow-hidden">
+              <div class="checklist-progress-fill h-full rounded-full transition-all duration-500" id="checklistProgress" style="width:0%"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <!-- Toast notification -->
+  <div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 hidden">
+    <div class="toast-inner px-5 py-3 rounded-2xl text-sm font-medium shadow-2xl backdrop-blur border whitespace-nowrap">
+      <span id="toastMsg"></span>
+    </div>
+  </div>
+
+  <script src="js/app.js"></script>
+</body>
+</html>
